@@ -582,6 +582,18 @@ def _detect_windows():
 _cache_by_host = {}  # host -> (timestamp, result)
 
 
+def _local_platform() -> str:
+    """Local OS tag for the hwfit platform enum: 'windows', 'termux', 'linux',
+    or '' for macOS (identified via backend=metal, not a platform string)."""
+    if os.name == "nt":
+        return "windows"
+    if platform.system() == "Darwin":
+        return ""
+    if os.path.isdir("/data/data/com.termux"):
+        return "termux"
+    return "linux"
+
+
 def detect_system(host="", ssh_port="", platform="", fresh=False):
     """Detect system hardware: RAM, CPU, GPU. Cached per host (hardware rarely
     changes, and probing a remote host over SSH is slow). Pass fresh=True to
@@ -684,6 +696,11 @@ def detect_system(host="", ssh_port="", platform="", fresh=False):
             # of the misleading "No GPU".
             "gpu_error": _last_gpu_error,
         }
+
+    # Tag platform so the frontend stops falling back to the browser OS.
+    plat = (_remote_platform or "linux") if _remote_host else _local_platform()
+    if plat:
+        result["platform"] = plat
 
     _remote_host = None
     _remote_platform = None
